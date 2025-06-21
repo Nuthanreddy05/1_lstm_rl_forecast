@@ -1,0 +1,60 @@
+time_series_rl_forecast/
+├── data/
+│   └── your_timeseries.csv              # Your raw time-series CSV (with 'value' column)
+├── notebooks/
+│   └── 01_lstm_rl_forecast.ipynb        # Exploratory notebook
+├── src/
+│   ├── lstm_model.py                    # LSTM PyTorch model & training utils
+│   └── rl_agent.py                      # Q-learning agent logic
+├── requirements.txt                     # Python dependencies
+└── README.md                            # Project overview & instructions
+
+
+import torch, torch.nn as nn, torch.optim as optim
+
+class LSTMPredictor(nn.Module):
+    def __init__(self, input_sz=1, hidden_sz=50, layers=1):
+        super().__init__()
+        self.lstm = nn.LSTM(input_sz, hidden_sz, layers, batch_first=True)
+        self.fc = nn.Linear(hidden_sz, 1)
+    def forward(self, x):
+        out, _ = self.lstm(x)
+        return self.fc(out[:, -1])
+
+def train_model(model, X_train, y_train, epochs=50, lr=1e-3):
+    opt, crit = optim.Adam(model.parameters(), lr=lr), nn.MSELoss()
+    for epoch in range(epochs):
+        model.train(); opt.zero_grad()
+        loss = crit(model(X_train), y_train)
+        loss.backward(); opt.step()
+        if epoch % 10 == 0:
+            print(f"Epoch {epoch}: {loss.item():.4f}")
+    return model
+
+import numpy as np
+
+class QAgent:
+    def __init__(self, states=10, actions=3, alpha=0.1, gamma=0.9, eps=0.1):
+        self.Q = np.zeros((states, actions))
+        self.alpha, self.gamma, self.eps = alpha, gamma, eps
+
+    def act(self, state):
+        return np.random.choice(self.Q.shape[1]) if np.random.rand() < self.eps else np.argmax(self.Q[state])
+
+    def update(self, s, a, r, s2):
+        self.Q[s,a] += self.alpha * (r + self.gamma * np.max(self.Q[s2]) - self.Q[s,a])
+
+# LSTM Forecasting + Reinforcement Learning Agent
+
+## 📈 Overview
+Hybrid model combining LSTM for time-series forecasting and a Q-learning agent making buy/sell/hold decisions based on predicted forecasts.
+
+## 🧪 Structure
+- `data/your_timeseries.csv`: time-series with “value” column
+- `notebooks/`: Jupyter exploration and evaluation
+- `src/`: PyTorch model and RL agent modules
+
+## 🚀 How to Run
+```bash
+pip install -r requirements.txt
+jupyter notebook notebooks/01_lstm_rl_forecast.ipynb
